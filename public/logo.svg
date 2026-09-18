@@ -1,0 +1,14 @@
+<svg width="120" height="120" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg">
+  <circle cx="60" cy="60" r="58" fill="#10172A"/>
+  <circle cx="60" cy="60" r="58" fill="none" stroke="#B8892B" stroke-width="1.5"/>
+  <!-- open book -->
+  <path d="M60 46 C 52 40, 38 38, 28 41 L 28 78 C 38 75, 52 77, 60 83 Z" fill="#EAECF9"/>
+  <path d="M60 46 C 68 40, 82 38, 92 41 L 92 78 C 82 75, 68 77, 60 83 Z" fill="#F5F6FA"/>
+  <path d="M60 46 L 60 83" stroke="#2B3A8F" stroke-width="1.2"/>
+  <path d="M32 48 L 54 52 M32 55 L 54 59 M32 62 L 54 66 M32 69 L 52 72" stroke="#6B7292" stroke-width="1.1" stroke-linecap="round"/>
+  <path d="M88 48 L 66 52 M88 55 L 66 59 M88 62 L 66 66 M88 69 L 68 72" stroke="#6B7292" stroke-width="1.1" stroke-linecap="round"/>
+  <!-- flame of knowledge above the book spine -->
+  <path d="M60 20 C 55 26, 55 32, 60 36 C 65 32, 65 26, 60 20 Z" fill="#B8892B"/>
+  <path d="M60 25 C 57 29, 57 32, 60 34 C 63 32, 63 29, 60 25 Z" fill="#E8C989"/>
+  <line x1="60" y1="36" x2="60" y2="43" stroke="#B8892B" stroke-width="1.5"/>
+</svg>
