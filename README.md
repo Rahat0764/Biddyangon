@@ -194,3 +194,23 @@ On top of the security & correctness patch above, this pass added real functiona
 - A full onboarding *wizard* wasn't built — what exists is the Head-account-creation shortcut described above, which removes the worst manual-SQL step but doesn't walk someone through session/class/subject setup step by step.
 
 See `DEPLOY_BN.md` for the full deployment walkthrough in Bengali (Supabase project creation, every API key and exactly where to find it, GitHub, Vercel, and the one remaining manual step — bootstrapping the very first Super Admin).
+
+---
+
+## Round 3 fixes — found by re-checking the pushed repo dump
+
+You pasted back a full dump of what actually ended up on GitHub, which let me check it against the live schema instead of just re-reading my own code. Found real, confirmed bugs — some of them exactly the kind that only show up once real data hits them:
+
+| # | Bug | Confirmed how | Fix |
+|---|---|---|---|
+| 1 | `payments` embed `profiles(full_name)` on the Payments page was **ambiguous** — `payments` has two foreign keys into `profiles` (`student_id` and `recorded_by`), and PostgREST can't guess which one you mean without a hint. This throws `PGRST201` (silently — the code never checked `error`), so "Recent Payments" would show `—` for every name. | Checked schema: both FKs confirmed on the same table. | `profiles!payments_student_id_fkey(full_name)` |
+| 2 | Same bug on `parent_students` → `profiles(full_name)` — two FKs (`parent_id`, `student_id`). A parent's "Linked Child" on the home dashboard always showed "None linked yet," even with a real link. | Same pattern, confirmed against schema. | `profiles!parent_students_student_id_fkey(full_name)` |
+| 3 | **Bigger one**: `student_subjects` embedding `students!inner(...)` in Marks Entry — `student_subjects.student_id` is a foreign key into `profiles`, **not** into `students`. There's no direct relationship between those two tables for PostgREST to embed through, so this query likely failed outright, and because the error wasn't checked, Marks Entry would just show "no students assigned" for every subject — silently undoing last round's actual fix for the phantom-F bug. | Checked schema: `student_subjects.student_id references profiles(id)`, confirmed no FK to `students`. | Split into two queries: get assigned student IDs from `student_subjects`, then look those up in `students` (which does have a real FK to `profiles`) |
+| 4 | The forced password-change page (`/dashboard/change-password`) is a full-screen dark takeover by design, but because it lives under `app/dashboard/`, it was rendering **inside** the normal Sidebar+Topbar shell too. | Read `DashboardShell.tsx` against the route structure. | Shell now renders that one route standalone, no sidebar/topbar |
+| 5 | `lib/date.ts`'s comment said "see vercel.json" for the `TZ=Asia/Dhaka` setting the whole local-date fix depends on — but `vercel.json` never actually existed. Without it, Vercel's default UTC runtime would make every "local" date computation UTC, silently reintroducing the exact timezone bug that was supposedly fixed. | Checked: no `vercel.json` in the repo. | Created it, with `TZ=Asia/Dhaka` |
+| 6 | `session="2026"` was still hardcoded in the marksheet page and the payment receipt, despite being flagged as a known issue earlier. | Grepped for it directly. | Both now read the institute's actual `academic_sessions.year` |
+| 7 | `GlobalSearch`'s student lookup wrapped a single condition in `.or()`, which uses commas/periods as its own delimiter syntax — a search containing either character could throw. | Code inspection. | Replaced with a direct `.ilike()` |
+
+**Please double-check `public/logo.svg` actually exists in your GitHub repo.** It's in the zip below and renders fine here, but your repo dump didn't list a `public/` folder at all — that might just be your dump tool skipping image/asset files (common), or it might genuinely not have been committed. If BrandMark shows a broken image in your deployed app, that's why — just add the file back and push.
+
+None of these four bugs (#1–3) would show up in casual manual testing — they need real linked data (a parent actually linked to a child, a payment actually recorded, a subject actually assigned to a student) before they surface, which is exactly why they slipped through two prior review passes. Worth remembering for anything not yet reviewed a third time.

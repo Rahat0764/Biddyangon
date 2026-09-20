@@ -25,7 +25,7 @@ export default async function ResultsPage() {
   }
 
   const { data: student } = await supabase
-    .from('students').select('*, classes(name), sections(name), profiles(full_name, photo_url)')
+    .from('students').select('*, classes(name), sections(name), profiles(full_name, photo_url), academic_sessions(year)')
     .eq('id', studentProfileId).single();
 
   const { data: result } = await supabase
@@ -64,7 +64,9 @@ export default async function ResultsPage() {
         className={(student as any).classes?.name ?? '—'}
         sectionName={(student as any).sections?.name ?? '—'}
         roll={student.roll ?? '—'}
-        session="2026"
+        // BUG FIXED: was hardcoded to "2026". Now reads the student's actual
+        // academic_sessions.year (joined above).
+        session={(student as any).academic_sessions?.year ?? '—'}
         examName={(result as any).exams?.name ?? 'Examination'}
         publishedDate={result.published_at ? new Date(result.published_at).toLocaleDateString() : '—'}
         verificationCode={result.verification_code}

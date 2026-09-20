@@ -23,6 +23,15 @@ export function DashboardShell({
     return null; // avoid a flash of dashboard content before the redirect above fires
   }
 
+  // BUG FIXED: the change-password page is a full-screen takeover (its own
+  // dark background, centered card — see app/dashboard/change-password),
+  // but it lives under app/dashboard so it was rendering INSIDE this shell
+  // too — sidebar and topbar showing behind/around a page that assumes it
+  // owns the whole viewport. Render it standalone instead.
+  if (pathname === '/dashboard/change-password') {
+    return <ToastProvider>{children}</ToastProvider>;
+  }
+
   return (
     <ToastProvider>
       <div className="flex min-h-screen">

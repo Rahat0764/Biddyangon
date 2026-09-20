@@ -10,8 +10,8 @@ interface FoundStudent {
 }
 
 export function RecordPaymentForm({
-  instituteId, instituteName, instituteLogoUrl, feeTypes, recordedBy,
-}: { instituteId: string; instituteName: string; instituteLogoUrl: string | null; feeTypes: FeeTypeOption[]; recordedBy: string }) {
+  instituteId, instituteName, instituteLogoUrl, sessionYear, feeTypes, recordedBy,
+}: { instituteId: string; instituteName: string; instituteLogoUrl: string | null; sessionYear: string; feeTypes: FeeTypeOption[]; recordedBy: string }) {
   const supabase = createClient();
   const toast = useToast();
   const [code, setCode] = useState('');
@@ -60,7 +60,7 @@ export function RecordPaymentForm({
       downloadReceiptPdf({
         instituteName, instituteLogoUrl, receiptNo: payment.id.slice(0, 8).toUpperCase(),
         date: new Date(payment.created_at).toLocaleDateString(), studentId: student.studentCode, studentName: student.name,
-        session: '2026', class: student.className, section: student.sectionName, roll: student.roll, contact: student.phone,
+        session: sessionYear, class: student.className, // BUG FIXED: was hardcoded '2026' section: student.sectionName, roll: student.roll, contact: student.phone,
         lines: [{ particulars: feeTypeName, details: new Date(payment.created_at).toLocaleDateString(), amount: Number(amount), paid: Number(amount), due: 0 }],
       });
 

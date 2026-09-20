@@ -38,7 +38,11 @@ export default async function DashboardHome() {
   }
 
   else if (profile.role === 'parent') {
-    const { data: link } = await supabase.from('parent_students').select('student_id, profiles(full_name)').eq('parent_id', profile.id).limit(1).maybeSingle();
+    // BUG FIXED: `parent_students` has two foreign keys into `profiles` —
+    // parent_id and student_id. An unhinted `profiles(full_name)` embed is
+    // ambiguous (PGRST201) and was silently failing, so "Linked Child"
+    // always showed "None linked yet" even when a link existed.
+    const { data: link } = await supabase.from('parent_students').select('student_id, profiles!parent_students_student_id_fkey(full_name)').eq('parent_id', profile.id).limit(1).maybeSingle();
     heroFields = [{ label: 'Linked Child', value: (link as any)?.profiles?.full_name ?? 'None linked yet' }];
     body = <QuickLinks links={[['View Result', '/dashboard/results'], ['Notices', '/dashboard/notices']]} />;
   }

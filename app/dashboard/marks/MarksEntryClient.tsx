@@ -40,30 +40,34 @@ export function MarksEntryClient({ instituteId, actorId, subjects, exams }: { in
     if (!subject || !examId) { setRows([]); return; }
     setLoading(true);
     (async () => {
-      // BUG FIXED: this used to load every student in the class, regardless
-      // of whether they were actually assigned this subject. For an
-      // optional/4th subject, that meant a mark row (often 0) got created
-      // for students who never took it — and computeResult() then failed
-      // them for a subject they weren't even enrolled in. We now only load
-      // students with a student_subjects row for this exact subject.
-      const { data: assigned } = await supabase
-        .from('student_subjects')
-        .select('student_id, students!inner(student_code, class_id, profiles(full_name))')
-        .eq('subject_id', subject.id);
+      // BUG FIXED: `student_subjects.student_id` is a foreign key into
+      // `profiles`, NOT into `students` — there is no direct relationship
+      // for PostgREST to embed `students!inner(...)` through, so this query
+      // was failing (silently, since the error wasn't checked) and Marks
+      // Entry always showed "no students are assigned this subject yet,"
+      // even when assignments existed. Split into two queries instead:
+      // get the assigned student IDs, then look those up in `students`
+      // (which DOES have a real FK to `profiles` for the name).
+      const { data: assignments, error: assignErr } = await supabase
+        .from('student_subjects').select('student_id').eq('subject_id', subject.id);
+      if (assignErr) { toast('Could not load students', assignErr.message, 'error'); setLoading(false); return; }
 
-      const relevant = (assigned ?? []).filter((a: any) => a.students?.class_id === subject.class_id);
+      const studentIds = (assignments ?? []).map((a) => a.student_id);
+      const { data: relevant } = studentIds.length > 0
+        ? await supabase.from('students').select('id, student_code, class_id, profiles(full_name)').in('id', studentIds).eq('class_id', subject.class_id)
+        : { data: [] as any[] };
 
       const { data: existing } = await supabase
         .from('marks').select('student_id, written, mcq, practical, status')
         .eq('exam_id', examId).eq('subject_id', subject.id);
       const map = new Map((existing ?? []).map((m) => [m.student_id, m]));
 
-      setRows(relevant.map((a: any) => {
-        const ex = map.get(a.student_id);
+      setRows((relevant ?? []).map((s: any) => {
+        const ex = map.get(s.id);
         return {
-          studentId: a.student_id,
-          name: a.students?.profiles?.full_name ?? a.students?.student_code,
-          code: a.students?.student_code,
+          studentId: s.id,
+          name: s.profiles?.full_name ?? s.student_code,
+          code: s.student_code,
           written: ex?.written?.toString() ?? '',
           mcq: ex?.mcq?.toString() ?? '',
           practical: ex?.practical?.toString() ?? '',

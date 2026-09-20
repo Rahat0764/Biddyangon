@@ -11,8 +11,13 @@ export default async function PaymentsPage() {
   if (!['account', 'institute_head', 'super_admin'].includes(profile.role)) redirect('/dashboard');
 
   const { data: feeTypes } = await supabase.from('fee_types').select('id, name, amount').eq('institute_id', profile.institute_id);
+  const { data: currentSession } = await supabase.from('academic_sessions').select('year').eq('institute_id', profile.institute_id).eq('is_current', true).maybeSingle();
   const { data: recent } = await supabase
-    .from('payments').select('id, amount, method, created_at, profiles(full_name)')
+    // BUG FIXED: `payments` has two foreign keys into `profiles` — student_id
+    // and recorded_by. `profiles(full_name)` with no hint is ambiguous to
+    // PostgREST (error PGRST201, "more than one relationship was found"),
+    // so this list was silently failing. Naming the constraint picks student_id.
+    .from('payments').select('id, amount, method, created_at, profiles!payments_student_id_fkey(full_name)')
     .eq('institute_id', profile.institute_id).order('created_at', { ascending: false }).limit(15);
 
   return (
@@ -27,6 +32,7 @@ export default async function PaymentsPage() {
           instituteId={profile.institute_id}
           instituteName={(profile as any).institutes?.name ?? 'Institute'}
           instituteLogoUrl={(profile as any).institutes?.logo_url ?? null}
+          sessionYear={currentSession?.year ?? '—'}
           feeTypes={feeTypes ?? []}
           recordedBy={profile.id}
         />

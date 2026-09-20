@@ -28,7 +28,7 @@ export function GlobalSearch() {
     setLoading(true);
     const timer = setTimeout(async () => {
       const [studentsRes, teachersRes] = await Promise.all([
-        supabase.from('students').select('id, student_code, profiles(full_name)').or(`student_code.ilike.%${q}%`).limit(5),
+        supabase.from('students').select('id, student_code, profiles(full_name)').ilike('student_code', `%${q}%`).limit(5),
         supabase.from('profiles').select('id, full_name, username').in('role', ['teacher', 'class_teacher']).ilike('full_name', `%${q}%`).limit(5),
       ]);
       const studentHits: Hit[] = (studentsRes.data ?? []).map((s: any) => ({
