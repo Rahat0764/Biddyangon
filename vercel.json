@@ -3,8 +3,5 @@
     "app/**/*": {
       "maxDuration": 30
     }
-  },
-  "env": {
-    "TZ": "Asia/Dhaka"
   }
 }
