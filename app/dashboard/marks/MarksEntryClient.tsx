@@ -12,7 +12,7 @@ interface SubjectOpt {
   mcq_marks: number | null;
   practical_marks: number | null;
   class_id: string;
-  classes?: { name: string }[];
+  classes?: { name: string };
 }
 
 interface ExamOpt { id: string; name: string; class_id: string }
