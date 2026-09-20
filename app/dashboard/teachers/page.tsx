@@ -47,7 +47,7 @@ export default async function TeachersPage() {
                     <img src={t.photo_url} className="w-8 h-8 rounded-full object-cover" alt={t.full_name} />
                   ) : (
                     <div className="w-8 h-8 rounded-full bg-indigo-tint flex items-center justify-center text-[10px] font-bold text-indigo-dark">
-                      {t.full_name.split(' ').map((w) => w[0]).slice(0, 2).join('').toUpperCase()}
+                      {t.full_name.split(' ').map((w: string) => w[0]).slice(0, 2).join('').toUpperCase()}
                     </div>
                   )}
                 </td>
