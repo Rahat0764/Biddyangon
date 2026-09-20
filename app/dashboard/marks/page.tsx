@@ -17,5 +17,5 @@ export default async function MarksPage() {
 
   const { data: exams } = await supabase.from('exams').select('id, name, class_id').eq('institute_id', profile.institute_id).neq('status', 'published');
 
-  return <MarksEntryClient instituteId={profile.institute_id} actorId={profile.id} subjects={subjects ?? []} exams={exams ?? []} />;
+  return <MarksEntryClient instituteId={profile.institute_id} actorId={profile.id} subjects={subjects ?? []} exams={(exams as any) ?? []} />;
 }
