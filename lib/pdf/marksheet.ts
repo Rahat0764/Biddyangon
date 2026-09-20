@@ -5,6 +5,7 @@
 //  - Detailed subject table, GPA shown both with and without the 4th subject.
 import jsPDF from 'jspdf';
 import type { ComputedResult } from '@/lib/gpa';
+import { detectImageFormat } from './image-format';
 
 async function urlToDataUrl(url: string): Promise<string | null> {
   try {
@@ -44,7 +45,7 @@ export async function downloadMarksheetPdf(props: {
   ]);
 
   // ---- Header ----
-  if (logoData) doc.addImage(logoData, 'JPEG', 20, 14, 22, 22);
+  if (logoData) doc.addImage(logoData, detectImageFormat(logoData), 20, 14, 22, 22);
   doc.setFont('helvetica', 'bold'); doc.setFontSize(16); doc.setTextColor(16, 23, 42);
   doc.text(props.instituteName, 105, 22, { align: 'center' });
   doc.setFont('helvetica', 'normal'); doc.setFontSize(9.5); doc.setTextColor(107, 114, 146);
@@ -53,7 +54,7 @@ export async function downloadMarksheetPdf(props: {
   if (photoData) {
     doc.setDrawColor(226, 229, 239);
     doc.rect(168, 13, 22, 22);
-    doc.addImage(photoData, 'JPEG', 168, 13, 22, 22);
+    doc.addImage(photoData, detectImageFormat(photoData), 168, 13, 22, 22);
   }
   doc.setDrawColor(16, 23, 42); doc.setLineWidth(0.5); doc.line(20, 40, 190, 40);
 

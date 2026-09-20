@@ -15,7 +15,7 @@ export function PersonHero({
           <Image src={photoUrl} alt={name} fill sizes="100vw" priority />
         ) : (
           <div className="w-full h-full bg-gradient-to-br from-indigo to-ink flex items-center justify-center text-white text-5xl font-bn">
-            {name[0]}
+            {name?.[0] ?? '?'}
           </div>
         )}
       </div>

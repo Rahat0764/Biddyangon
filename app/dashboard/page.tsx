@@ -14,7 +14,7 @@ export default async function DashboardHome() {
   const instituteId = profile.institute_id;
   const instituteName = (profile as any).institutes?.name ?? 'Biddyangon';
 
-  let heroFields: { label: string; value: string }[] = [{ label: 'Role', value: profile.role.replace('_', ' ') }, { label: 'Username', value: profile.username }];
+  let heroFields: { label: string; value: string }[] = [{ label: 'Role', value: profile.role.replace(/_/g, ' ') }, { label: 'Username', value: profile.username }];
   let body: React.ReactNode = null;
 
   if (profile.role === 'student') {

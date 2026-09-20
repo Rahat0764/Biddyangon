@@ -2,6 +2,7 @@
 // Matches the reference receipt layout: logo top-left, institute name centered,
 // receipt-number box top-right, student info grid, itemized fee table, amount in words.
 import jsPDF from 'jspdf';
+import { detectImageFormat } from './image-format';
 
 interface FeeLine { particulars: string; details: string; amount: number; paid: number; due: number; }
 
@@ -37,19 +38,27 @@ const ONES = ['', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight'
 const TENS = ['', '', 'Twenty', 'Thirty', 'Forty', 'Fifty', 'Sixty', 'Seventy', 'Eighty', 'Ninety'];
 
 function numberToWords(n: number): string {
-  if (n === 0) return 'Zero';
-  if (n < 20) return ONES[n];
-  if (n < 100) return TENS[Math.floor(n / 10)] + (n % 10 ? ' ' + ONES[n % 10] : '');
-  if (n < 1000) return ONES[Math.floor(n / 100)] + ' Hundred' + (n % 100 ? ' ' + numberToWords(n % 100) : '');
-  if (n < 100000) return numberToWords(Math.floor(n / 1000)) + ' Thousand' + (n % 1000 ? ' ' + numberToWords(n % 1000) : '');
-  return numberToWords(Math.floor(n / 100000)) + ' Lakh' + (n % 100000 ? ' ' + numberToWords(n % 100000) : '');
+  // BUG FIXED (confirmed: numberToWords(500.5) => "Five Hundred undefined").
+  // A fractional remainder like 0.5 recursed back into this function, and
+  // `Math.floor(0.5 / 100)` indexed ONES[0] which is the empty string for
+  // some paths and undefined for others. Money-in-words is a whole-taka
+  // convention here, so round to the nearest integer taka up front and
+  // never feed a decimal into the recursive branches.
+  const whole = Math.round(n);
+  if (whole === 0) return 'Zero';
+  if (whole < 0) return 'Minus ' + numberToWords(-whole);
+  if (whole < 20) return ONES[whole];
+  if (whole < 100) return TENS[Math.floor(whole / 10)] + (whole % 10 ? ' ' + ONES[whole % 10] : '');
+  if (whole < 1000) return ONES[Math.floor(whole / 100)] + ' Hundred' + (whole % 100 ? ' ' + numberToWords(whole % 100) : '');
+  if (whole < 100000) return numberToWords(Math.floor(whole / 1000)) + ' Thousand' + (whole % 1000 ? ' ' + numberToWords(whole % 1000) : '');
+  return numberToWords(Math.floor(whole / 100000)) + ' Lakh' + (whole % 100000 ? ' ' + numberToWords(whole % 100000) : '');
 }
 
 export async function downloadReceiptPdf(r: ReceiptData) {
   const doc = new jsPDF({ unit: 'mm', format: 'a4' });
   const logo = r.instituteLogoUrl ? await urlToDataUrl(r.instituteLogoUrl) : null;
 
-  if (logo) doc.addImage(logo, 'JPEG', 20, 14, 22, 22);
+  if (logo) doc.addImage(logo, detectImageFormat(logo), 20, 14, 22, 22);
   doc.setFont('helvetica', 'bold'); doc.setFontSize(17); doc.setTextColor(43, 58, 143);
   doc.text(r.instituteName, 105, 22, { align: 'center', maxWidth: 110 });
   doc.setFontSize(10); doc.setTextColor(107, 114, 146); doc.setFont('helvetica', 'normal');

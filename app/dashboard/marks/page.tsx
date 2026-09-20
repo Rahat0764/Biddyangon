@@ -11,7 +11,7 @@ export default async function MarksPage() {
   if (!['teacher', 'class_teacher', 'institute_head', 'super_admin'].includes(profile.role)) redirect('/dashboard');
 
   // Subjects this teacher is assigned to (institute_head/super_admin see every subject).
-  let subjectsQuery = supabase.from('subjects').select('id, name, code, full_marks, class_id, classes(name)').eq('institute_id', profile.institute_id);
+  let subjectsQuery = supabase.from('subjects').select('id, name, code, full_marks, theory_marks, mcq_marks, practical_marks, class_id, classes(name)').eq('institute_id', profile.institute_id);
   if (profile.role === 'teacher' || profile.role === 'class_teacher') subjectsQuery = subjectsQuery.eq('teacher_id', profile.id);
   const { data: subjects } = await subjectsQuery;
 

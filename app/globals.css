@@ -38,3 +38,29 @@ table { width: 100%; border-collapse: collapse; }
 th { text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: .05em; color: #6B7292; font-weight: 600; padding: 11px 14px; background: #F5F6FA; border-bottom: 1px solid #E3E5EF; white-space: nowrap; }
 td { padding: 11px 14px; border-bottom: 1px solid #E3E5EF; font-size: 13px; color: #10172A; }
 tr:last-child td { border-bottom: none; }
+
+/* ---------- Light global polish pass ----------
+   Broad, low-risk motion/consistency fixes rather than a full redesign:
+   every interactive element gets a smooth transition and a visible focus
+   ring (keyboard accessibility was previously inconsistent), cards lift
+   slightly on hover so the dashboard feels less static, and each route's
+   content fades in instead of popping in abruptly. */
+a, button, input, select, textarea, [role="button"] {
+  transition: background-color .15s ease, border-color .15s ease, color .15s ease, opacity .15s ease, transform .15s ease, box-shadow .15s ease;
+}
+button:disabled { transition: opacity .15s ease; }
+a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible, [role="button"]:focus-visible {
+  outline: 2px solid #2B3A8F;
+  outline-offset: 2px;
+}
+.card { transition: box-shadow .18s ease, border-color .18s ease, transform .18s ease; }
+.card:hover { box-shadow: 0 8px 24px -10px rgba(16, 23, 42, .12); }
+tbody tr { transition: background-color .12s ease; }
+main, .content-fade { animation: content-fade-in .25s ease; }
+@keyframes content-fade-in {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .001ms !important; transition-duration: .001ms !important; }
+}

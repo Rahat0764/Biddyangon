@@ -33,10 +33,22 @@ export interface ComputedResult {
   failedSubjects: string[];
 }
 
-/** Look up grade + grade point for a percentage-scaled mark against the institute's policy. */
+/**
+ * Look up grade + grade point for a percentage-scaled mark against the
+ * institute's policy.
+ *
+ * BUG FIXED (confirmed by testing 159/200 = 79.5%): the original version
+ * matched `pct >= min && pct <= max` against integer bands like 70–79 and
+ * 80–100. Any decimal percentage landing in the gap between two bands
+ * (79.5 is above 79 but below 80) matched nothing, fell through to the
+ * `??` fallback, and silently graded as the LAST band in the array — which
+ * is F. Now we sort bands by `min` descending and take the first one the
+ * percentage clears, so there are no gaps and no silent F.
+ */
 export function gradeFor(obtained: number, fullMarks: number, policy: GradingPolicy) {
   const pct = fullMarks > 0 ? (obtained / fullMarks) * 100 : 0;
-  const band = policy.scale.find((b) => pct >= b.min && pct <= b.max) ?? policy.scale[policy.scale.length - 1];
+  const sorted = [...policy.scale].sort((a, b) => b.min - a.min);
+  const band = sorted.find((b) => pct >= b.min) ?? sorted[sorted.length - 1];
   return { grade: band.grade, point: band.point, pct };
 }
 
@@ -70,17 +82,20 @@ export function computeResult(marks: MarkRow[], policy: GradingPolicy): Computed
   const passed = failedSubjects.length === 0;
 
   const sumPoints = compulsory.reduce((a, s) => a + s.point, 0);
-  const gpaWithout4th = passed && compulsory.length > 0 ? round2(sumPoints / compulsory.length) : 0;
+  const gpaWithout4th = passed && compulsory.length > 0 ? round2(Math.min(5, sumPoints / compulsory.length)) : 0;
 
   let gpaWith4th = gpaWithout4th;
   if (passed && optional && compulsory.length > 0) {
     const bonus = Math.max(0, Math.min(policy.fourth_subject_bonus_cap, optional.point - 2.0));
-    gpaWith4th = round2((sumPoints + bonus) / compulsory.length);
+    gpaWith4th = round2(Math.min(5, (sumPoints + bonus) / compulsory.length));
   }
 
-  const overallGrade = passed
-    ? policy.scale.find((b) => b.point === Math.floor(gpaWithout4th * 2) / 2)?.grade ?? topGradeFor(gpaWithout4th, policy)
-    : 'F';
+  // BUG FIXED: the original matched `b.point === Math.floor(gpa * 2) / 2`
+  // against band points {5, 4, 3.5, 3, 2, 1, 0} — a GPA like 4.16 never
+  // equals exactly one of those, so this almost always fell through to
+  // the fallback anyway. topGradeFor() (highest band whose point the GPA
+  // clears) is the actual intended logic, so we just call it directly.
+  const overallGrade = passed ? topGradeFor(gpaWithout4th, policy) : 'F';
 
   return {
     subjects,

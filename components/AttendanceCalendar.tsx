@@ -1,44 +1,57 @@
 'use client';
-// Mirrors the EximusEdu-style calendar: color-coded days + a summary pie chart.
+import Link from 'next/link';
+
 const STATUS_COLOR: Record<string, string> = {
   present: '#4ADE80', absent: '#F87171', late: '#FB923C', leave: '#93C5FD', holiday: '#FDE68A',
 };
 
 interface DayRow { date: string; status: keyof typeof STATUS_COLOR | null; }
 
-export function AttendanceCalendar({ monthLabel, days }: { monthLabel: string; days: DayRow[] }) {
+export function AttendanceCalendar({
+  monthLabel, days, prevHref, nextHref,
+}: { monthLabel: string; days: DayRow[]; prevHref?: string; nextHref?: string }) {
   const counts: Record<string, number> = { present: 0, absent: 0, late: 0, leave: 0 };
   days.forEach((d) => { if (d.status && d.status in counts) counts[d.status]++; });
   const total = Object.values(counts).reduce((a, b) => a + b, 0) || 1;
 
-  const firstDow = new Date(days[0]?.date ?? Date.now()).getDay();
+  // Parse "YYYY-MM-DD" as local calendar values, not via `new Date(string)`
+  // (which some engines parse as UTC and can shift the weekday by one).
+  const [fy, fm, fd] = (days[0]?.date ?? '1970-01-01').split('-').map(Number);
+  const firstDow = new Date(fy, fm - 1, fd).getDay();
   const blanks = Array.from({ length: firstDow });
 
+  const nonZero = Object.entries(counts).filter(([, v]) => v > 0);
   let cum = 0;
-  const slices = Object.entries(counts).map(([k, v]) => {
-    const start = (cum / total) * 360; cum += v;
-    const end = (cum / total) * 360;
+  const slices = nonZero.map(([k, v], i) => {
+    const start = (cum / total) * 360;
+    cum += v;
+    // Cap just short of 360° so a single 100% status still draws a visible
+    // ring instead of a zero-length arc back to its own start point.
+    const end = i === nonZero.length - 1 ? Math.min(cum / total, 0.9999) * 360 : (cum / total) * 360;
     return { k, v, start, end, color: STATUS_COLOR[k] };
   });
 
   return (
     <div className="card p-5">
       <div className="flex items-center justify-between mb-4">
-        <button className="text-slate2-light">&lt;</button>
+        {prevHref ? <Link href={prevHref} className="text-slate2-light hover:text-ink px-2">&lt;</Link> : <span className="w-4" />}
         <div className="font-semibold text-sm">{monthLabel}</div>
-        <button className="text-slate2-light">&gt;</button>
+        {nextHref ? <Link href={nextHref} className="text-slate2-light hover:text-ink px-2">&gt;</Link> : <span className="w-4" />}
       </div>
       <div className="grid grid-cols-7 gap-1.5 text-center text-[11px] text-slate2-light mb-1.5">
         {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((d) => <div key={d}>{d}</div>)}
       </div>
       <div className="grid grid-cols-7 gap-1.5">
         {blanks.map((_, i) => <div key={'b' + i} />)}
-        {days.map((d) => (
-          <div key={d.date} className="aspect-square rounded flex items-center justify-center text-xs font-medium"
-            style={{ background: d.status ? STATUS_COLOR[d.status] + '55' : '#F5F6FA', color: '#10172A' }}>
-            {new Date(d.date).getDate()}
-          </div>
-        ))}
+        {days.map((d) => {
+          const [y, m, dd] = d.date.split('-').map(Number);
+          return (
+            <div key={d.date} className="aspect-square rounded flex items-center justify-center text-xs font-medium transition-colors"
+              style={{ background: d.status ? STATUS_COLOR[d.status] + '55' : '#F5F6FA', color: '#10172A' }}>
+              {dd}
+            </div>
+          );
+        })}
       </div>
       <div className="flex flex-wrap gap-x-4 gap-y-1.5 mt-4 text-[11px]">
         {Object.entries(STATUS_COLOR).map(([k, c]) => (
@@ -54,9 +67,13 @@ export function AttendanceCalendar({ monthLabel, days }: { monthLabel: string; d
         ))}
       </div>
 
-      <svg viewBox="0 0 120 120" className="w-40 h-40 mx-auto mt-5">
-        {slices.filter((s) => s.v > 0).map((s) => <PieSlice key={s.k} {...s} />)}
-      </svg>
+      {nonZero.length > 0 ? (
+        <svg viewBox="0 0 120 120" className="w-40 h-40 mx-auto mt-5">
+          {slices.map((s) => <PieSlice key={s.k} {...s} />)}
+        </svg>
+      ) : (
+        <p className="text-xs text-slate2-light text-center mt-5">No attendance recorded this month yet.</p>
+      )}
     </div>
   );
 }

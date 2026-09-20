@@ -2,13 +2,11 @@
 import { useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { useToast } from '@/components/ToastProvider';
-import { computeResult } from '@/lib/gpa';
-import type { MarkRow } from '@/lib/types';
 
 interface SubjectStat { id: string; name: string; code: string; is_optional: boolean; submitted: number; verified: number; total: number; }
 
 export function ExamDetailClient({
-  exam, instituteId, gradingPolicy, subjects, actorId,
+  exam, subjects, actorId,
 }: { exam: any; instituteId: string; gradingPolicy: any; subjects: SubjectStat[]; actorId: string }) {
   const supabase = createClient();
   const toast = useToast();
@@ -28,42 +26,24 @@ export function ExamDetailClient({
 
   async function publishResults() {
     setPublishing(true);
-    try {
-      const { data: students } = await supabase.from('students').select('id, roll').eq('class_id', exam.class_id);
-      if (!students || students.length === 0) throw new Error('No students found in this class.');
-
-      for (const student of students) {
-        const { data: marksRaw } = await supabase
-          .from('marks').select('written, mcq, practical, total, subjects(id, name, code, full_marks)')
-          .eq('exam_id', exam.id).eq('student_id', student.id);
-        if (!marksRaw || marksRaw.length === 0) continue;
-
-        const { data: assignments } = await supabase.from('student_subjects').select('subject_id, is_fourth_subject').eq('student_id', student.id);
-
-        const marks: MarkRow[] = marksRaw.map((m: any) => ({
-          subject: m.subjects, written: m.written, mcq: m.mcq, practical: m.practical, total: m.total,
-          is_fourth_subject: (assignments ?? []).find((a) => a.subject_id === m.subjects.id)?.is_fourth_subject ?? false,
-        }));
-
-        const computed = computeResult(marks, gradingPolicy);
-
-        await supabase.from('results').upsert({
-          institute_id: instituteId, exam_id: exam.id, student_id: student.id,
-          total_obtained: computed.totalObtained, total_full: computed.totalFull,
-          gpa_without_4th: computed.gpaWithout4th, gpa_with_4th: computed.gpaWith4th,
-          overall_grade: computed.overallGrade, result_status: computed.passed ? 'passed' : 'failed',
-          published: true, published_at: new Date().toISOString(), published_by: actorId,
-        }, { onConflict: 'exam_id,student_id' });
-      }
-
-      await supabase.from('exams').update({ status: 'published' }).eq('id', exam.id);
-      setStatus('published');
-      toast('Results published', `${exam.name} results are now live for students and guardians.`, 'success');
-    } catch (e: any) {
-      toast('Publish failed', e.message, 'error');
-    } finally {
-      setPublishing(false);
+    // BUG FIXED: this used to loop over every student in the browser, firing
+    // several sequential requests per student (marks, assignments, upsert).
+    // For 40+ students that's 100+ round trips, it wasn't wrapped in a
+    // transaction, GPA was computed with client-supplied data, and a
+    // mid-loop failure (closed tab, dropped connection) left half the class
+    // published and half not. Publishing now calls a single Postgres
+    // function (publish_exam_results, in security_patch.sql) that does the
+    // whole class in one atomic transaction, re-checks that every mark is
+    // verified and that the caller is actually authorized, and computes
+    // GPA server-side — the browser can no longer influence the numbers.
+    const { data, error } = await supabase.rpc('publish_exam_results', { p_exam_id: exam.id });
+    setPublishing(false);
+    if (error) {
+      toast('Publish failed', error.message, 'error');
+      return;
     }
+    setStatus('published');
+    toast('Results published', `${exam.name} results are now live for ${data ?? 0} students.`, 'success');
   }
 
   return (
