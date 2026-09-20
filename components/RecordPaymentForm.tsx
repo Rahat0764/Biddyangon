@@ -60,7 +60,7 @@ export function RecordPaymentForm({
       downloadReceiptPdf({
         instituteName, instituteLogoUrl, receiptNo: payment.id.slice(0, 8).toUpperCase(),
         date: new Date(payment.created_at).toLocaleDateString(), studentId: student.studentCode, studentName: student.name,
-        session: sessionYear, class: student.className, // BUG FIXED: was hardcoded '2026' section: student.sectionName, roll: student.roll, contact: student.phone,
+        session: sessionYear, class: student.className, section: student.sectionName, roll: student.roll, contact: student.phone,
         lines: [{ particulars: feeTypeName, details: new Date(payment.created_at).toLocaleDateString(), amount: Number(amount), paid: Number(amount), due: 0 }],
       });
 
