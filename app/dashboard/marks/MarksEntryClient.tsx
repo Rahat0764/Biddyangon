@@ -4,10 +4,17 @@ import { createClient } from '@/lib/supabase/client';
 import { useToast } from '@/components/ToastProvider';
 
 interface SubjectOpt {
-  id: string; name: string; code: string; full_marks: number;
-  theory_marks: number | null; mcq_marks: number | null; practical_marks: number | null;
-  class_id: string; classes?: { name: string };
+  id: string;
+  name: string;
+  code: string;
+  full_marks: number;
+  theory_marks: number | null;
+  mcq_marks: number | null;
+  practical_marks: number | null;
+  class_id: string;
+  classes?: { name: string }[];
 }
+
 interface ExamOpt { id: string; name: string; class_id: string }
 interface StudentMarkRow {
   studentId: string; name: string; code: string;
